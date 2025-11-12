@@ -791,7 +791,10 @@ static void init_env() {
     // Followers and learners don't need RocksDB since they only replay, not generate logs
     if (benchConfig.getIsReplicated() && benchConfig.getLeaderConfig()) {
       auto& persistence = mako::RocksDBPersistence::getInstance();
-      std::string db_path = "/tmp/mako_rocksdb_shard" + std::to_string(benchConfig.getShardIndex())
+      // Add username prefix to avoid conflicts when multiple users run on the same server
+      const char* username = getenv("USER");
+      if (!username) username = "unknown";
+      std::string db_path = "/tmp/" + std::string(username) + "_mako_rocksdb_shard" + std::to_string(benchConfig.getShardIndex())
                             + "_leader_pid" + std::to_string(getpid());
       size_t num_partitions = benchConfig.getNthreads();
       size_t num_threads = num_partitions;

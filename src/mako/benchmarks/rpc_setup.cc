@@ -239,7 +239,13 @@ void mako::stop_erpc_server()
 {
   auto &cfg = BenchmarkConfig::getInstance();
   auto &server_transports = cfg.getServerTransports();
+  std::cerr << "[STOP_SERVER] Stopping " << cfg.getNumErpcServer() << " server transports" << std::endl;
   for (int i = 0; i < (int)cfg.getNumErpcServer(); ++i) {
-    if (server_transports[i]) server_transports[i]->Stop();
+    if (server_transports[i]) {
+      std::cerr << "[STOP_SERVER] Stopping server transport " << i << std::endl;
+      server_transports[i]->Stop();
+      std::cerr << "[STOP_SERVER] Server transport " << i << " stopped" << std::endl;
+    }
   }
+  std::cerr << "[STOP_SERVER] All server transports stopped" << std::endl;
 }

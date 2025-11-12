@@ -48,8 +48,13 @@ int main() {
     std::atomic<bool> all_done{false};
 
     // Initialize RocksDB
+    // Add username prefix to avoid conflicts when multiple users run on the same server
+    const char* username = getenv("USER");
+    if (!username) username = "unknown";
+    std::string db_path = "/tmp/" + std::string(username) + "_callback_demo_db";
+
     auto& persistence = mako::RocksDBPersistence::getInstance();
-    if (!persistence.initialize("/tmp/callback_demo_db", 2, 2)) {
+    if (!persistence.initialize(db_path, 2, 2)) {
         std::cerr << "Failed to initialize RocksDB!" << std::endl;
         return 1;
     }

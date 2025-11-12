@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <memory>
 #include <mutex>
+#include <atomic>
 
 namespace mako {
 
@@ -184,12 +185,9 @@ private:
     std::map<std::tuple<uint8_t, uint8_t, uint16_t>, std::shared_ptr<rrr::Client>> clients_;
     std::mutex clients_lock_;
 
-    // Current request buffer (reused between calls)
-    std::vector<char> request_buffer_;
-    size_t current_resp_len_{0};
-
     // Runtime state
-    bool stop_{false};
+    std::atomic<bool> stop_{false};
+    std::atomic<bool> event_loop_running_{false};
 
     // Helper queues for server-side processing
     std::unordered_map<uint16_t, mako::HelperQueue*> queue_holders_;

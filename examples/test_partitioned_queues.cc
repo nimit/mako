@@ -69,7 +69,12 @@ void test_partitioned_queues() {
     const size_t NUM_PARTITIONS = 8;
     const size_t NUM_WORKER_THREADS = 4;
 
-    if (!persistence.initialize("/tmp/test_partitioned_queues", NUM_PARTITIONS, NUM_WORKER_THREADS)) {
+    // Add username prefix to avoid conflicts when multiple users run on the same server
+    const char* username = getenv("USER");
+    if (!username) username = "unknown";
+    string db_path = "/tmp/" + string(username) + "_test_partitioned_queues";
+
+    if (!persistence.initialize(db_path, NUM_PARTITIONS, NUM_WORKER_THREADS)) {
         cerr << "Failed to initialize RocksDB!" << endl;
         return;
     }
@@ -249,7 +254,12 @@ void test_queue_contention_comparison() {
     const size_t NUM_PARTITIONS = 4;
     const size_t NUM_WORKERS = 2;
 
-    if (!persistence.initialize("/tmp/test_contention_comparison", NUM_PARTITIONS, NUM_WORKERS)) {
+    // Add username prefix to avoid conflicts when multiple users run on the same server
+    const char* username = getenv("USER");
+    if (!username) username = "unknown";
+    string db_path = "/tmp/" + string(username) + "_test_contention_comparison";
+
+    if (!persistence.initialize(db_path, NUM_PARTITIONS, NUM_WORKERS)) {
         cerr << "Failed to initialize RocksDB!" << endl;
         return;
     }

@@ -41,12 +41,25 @@ Hanging processes:"
 
 # Cleanup function: Kill any lingering test processes
 cleanup_processes() {
+    result=ci_results_${RUN_NUM}_${RUN_INDEX}
+    mkdir -p ~/results/$result
+    rm -f nfs_*
     echo "Cleaning up any lingering test processes..."
+
+    # Kill test executables
     pkill -9 -f simpleTransactionRep 2>/dev/null || true
     pkill -9 -f dbtest 2>/dev/null || true
     pkill -9 -f simplePaxos 2>/dev/null || true
     pkill -9 -f simpleTransaction 2>/dev/null || true
+
+    # Kill test wrapper scripts (2shard tests with/without replication)
+    pkill -9 -f "test_2shard_no_replication.sh" 2>/dev/null || true
+    pkill -9 -f "test_2shard_replication.sh" 2>/dev/null || true
+    pkill -9 -f "test_1shard_replication.sh" 2>/dev/null || true
+    pkill -9 -f "bash/shard.sh" 2>/dev/null || true
+
     sleep 3  # Give OS time to fully terminate processes and release ports
+
     # Wait for ports to be released (check common test ports)
     for i in {1..10}; do
         if ! lsof -i :7001-8006 >/dev/null 2>&1 && ! lsof -i :31000-31100 >/dev/null 2>&1; then
@@ -54,6 +67,8 @@ cleanup_processes() {
         fi
         sleep 1
     done
+
+    cp *.log ~/results/$result/  2>/dev/null || true
     echo "Cleanup complete."
 }
 
@@ -81,7 +96,7 @@ run_simple_paxos() {
     [ $test_result -eq 0 ] && [ $hanging_check -eq 0 ]
 }
 
-# Function 4: Run 2-shard no replication test
+# Function 4: Run 2-shard no replication test (RRR transport)
 run_2shard_no_replication() {
     cleanup_processes
     set +e
@@ -89,6 +104,18 @@ run_2shard_no_replication() {
     local test_result=$?
     set -e
     check_for_hanging_processes "shardNoReplication"
+    local hanging_check=$?
+    [ $test_result -eq 0 ] && [ $hanging_check -eq 0 ]
+}
+
+# Function 4b: Run 2-shard no replication test with eRPC transport
+run_2shard_no_replication_erpc() {
+    cleanup_processes
+    set +e
+    MAKO_TRANSPORT=erpc bash ./examples/test_2shard_no_replication.sh
+    local test_result=$?
+    set -e
+    check_for_hanging_processes "shardNoReplicationErpc"
     local hanging_check=$?
     [ $test_result -eq 0 ] && [ $hanging_check -eq 0 ]
 }
@@ -116,6 +143,20 @@ run_2shard_replication() {
     set -e
     # Always check for hanging processes, even if test failed
     check_for_hanging_processes "shard2Replication"
+    local hanging_check=$?
+    # Return failure if either check failed
+    [ $test_result -eq 0 ] && [ $hanging_check -eq 0 ]
+}
+
+run_2shard_replication_erpc() {
+    cleanup_processes
+    # Run test and capture exit code (set +e to prevent immediate exit)
+    set +e
+    MAKO_TRANSPORT=erpc bash ./examples/test_2shard_replication.sh
+    local test_result=$?
+    set -e
+    # Always check for hanging processes, even if test failed
+    check_for_hanging_processes "shard2ReplicationErpc"
     local hanging_check=$?
     # Return failure if either check failed
     [ $test_result -eq 0 ] && [ $hanging_check -eq 0 ]
@@ -182,10 +223,21 @@ run_multi_shard_single_process() {
     [ $test_result -eq 0 ] && [ $hanging_check -eq 0 ]
 }
 
+cleanup() {
+    cleanup_processes
+    make clean
+    rm -rf ./out-perf.masstree/*
+    rm -rf ./src/mako/out-perf.masstree/*
+    rm -rf build/*
+}
+
 # Main entry point with command parsing
 case "${1:-}" in
     compile)
         compile
+        ;;
+    cleanup)
+       cleanup 
         ;;
     simpleTransaction)
         run_simple_transaction
@@ -196,11 +248,17 @@ case "${1:-}" in
     shardNoReplication)
         run_2shard_no_replication
         ;;
+    shardNoReplicationErpc)
+        run_2shard_no_replication_erpc
+        ;;
     shard1Replication)
         run_1shard_replication
         ;;
     shard2Replication)
         run_2shard_replication
+        ;;
+    shard2ReplicationErpc)
+        run_2shard_replication_erpc
         ;;
     shard1ReplicationSimple)
         run_1shard_replication_simple

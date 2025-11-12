@@ -16,12 +16,13 @@ build: configure
 
 clean:
 	rm -rf $(BUILD_DIR)
-	# Remove all test files
-	rm -rf /tmp/test_*
-	# Remove all disk db
-	rm -rf /tmp/rocksdb_*
-	rm -rf /tmp/callback_demo_db*
-	# rm -rf /tmp/mako_rocksdb*
+	# Remove all test files - using username prefix
+	USERNAME=$${USER:-unknown}; \
+	rm -rf /tmp/$${USERNAME}_test_*; \
+	rm -rf /tmp/$${USERNAME}_rocksdb_*; \
+	rm -rf /tmp/$${USERNAME}_callback_demo_db*; \
+	rm -rf /tmp/$${USERNAME}_mako_rocksdb*; \
+	rm -rf /tmp/$${USERNAME}_test_stress_partitioned*
 	# Clean out-perf.masstree
 	rm -rf ./out-perf.masstree/*
 	# Clean mako out-perf.masstree

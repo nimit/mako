@@ -38,7 +38,8 @@ sleep 2
 echo "Cleaning up old files..."
 rm -f nfs_sync_*
 rm -f continuous-shard*.log
-rm -rf /tmp/mako_rocksdb_shard*
+USERNAME=${USER:-unknown}
+rm -rf /tmp/${USERNAME}_mako_rocksdb_shard*
 
 # Function to start a shard
 start_shard() {

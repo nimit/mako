@@ -429,6 +429,18 @@ private:
     static constexpr unsigned tset_chunk = 512;
     static constexpr unsigned tset_max_capacity = 32768;
 
+    uint64_t read_only_snapshot_id_;
+
+public:
+    void set_read_only_snapshot_id(uint64_t id) {
+        read_only_snapshot_id_ = id;
+    }
+
+    uint64_t get_read_only_snapshot_id() const {
+        return read_only_snapshot_id_;
+    }
+
+private:
     void initialize();
 
     Transaction()
@@ -500,6 +512,10 @@ private:
 #endif
         TXP_INCREMENT(txp_total_starts);
         state_ = s_in_progress;
+        // Initialize read-only snapshot ID with the current stable watermark
+        // We use relaxed ordering because strict freshness isn't required for the start of the transaction,
+        // and it avoids a more expensive barrier.
+        read_only_snapshot_id_ = sync_util::sync_logger::retrieveShardW_relaxed();
     }
 
 #if TRANSACTION_HASHTABLE

@@ -733,6 +733,8 @@ add_apps(test_callback_demo examples/test_callback_demo.cc)
 add_apps(test_ordered_callbacks examples/test_ordered_callbacks.cc)
 add_apps(test_partitioned_queues examples/test_partitioned_queues.cc)
 add_apps(test_stress_partitioned_queues examples/test_stress_partitioned_queues.cc)
+add_apps(test_ro_fast_path src/mako/benchmarks/test_ro_fast_path.cc)
+add_apps(test_ro_fast_path_rep src/mako/benchmarks/test_ro_fast_path_rep.cc)
 
 # Enable borrow checking for dbtest
 set(ENABLE_BORROW_CHECKING ON CACHE BOOL "Enable borrow checking" FORCE)

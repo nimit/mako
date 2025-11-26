@@ -157,8 +157,10 @@ public:
         return false;
       }
       item.observe(tversion_type(elem_vers));
-      if (TThread::is_multiversion())
-        return MultiVersionValue::mvGET(retval, (char*)e->data(), TThread::txn->get_current_term(), sync_util::sync_logger::hist_timestamp);
+      if (TThread::is_multiversion()) {
+        uint64_t snapshot_id = TThread::txn->get_read_only_snapshot_id();
+        return MultiVersionValue::mvGET(retval, (char*)e->data(), TThread::txn->get_current_term(), sync_util::sync_logger::hist_timestamp, snapshot_id);
+      }
     } else {
       //Warning("Not found a value");
       ensureNotFound(lp.node(), lp.full_version_value());
@@ -372,10 +374,12 @@ public:
         return callback(key, val);
 
       // key and val are both only guaranteed until callback returns
+      uint64_t snapshot_id = TThread::txn->get_read_only_snapshot_id();
       bool ret = MultiVersionValue::mvGET(val,
                                           (char*)e->data(),
                                           TThread::txn->get_current_term(), 
-                                          sync_util::sync_logger::hist_timestamp);
+                                          sync_util::sync_logger::hist_timestamp,
+                                          snapshot_id);
       if (ret){
         return callback(key, val);//query_callback_overload(key, val, callback);
       }else {
@@ -424,10 +428,12 @@ public:
       if (!TThread::is_multiversion())
         return callback(key, val);
 
+      uint64_t snapshot_id = TThread::txn->get_read_only_snapshot_id();
       bool ret = MultiVersionValue::mvGET(val,
                                           (char*)e->data(),
                                           TThread::txn->get_current_term(), 
-                                          sync_util::sync_logger::hist_timestamp);
+                                          sync_util::sync_logger::hist_timestamp,
+                                          snapshot_id);
       if (ret)
         return callback(key, val);//query_callback_overload(key, val, callback);
       else {

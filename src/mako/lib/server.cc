@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <random>
 #include <chrono>
@@ -510,7 +511,7 @@ namespace mako
         int status = ErrorCode::SUCCESS;
         if (req->table_id > 0) {
             try {
-                bool ret = open_tables_table_id[req->table_id]->shard_get(obj_key0, obj_v);
+                bool ret = open_tables_table_id[req->table_id]->shard_get(obj_key0, obj_v, std::string::npos, req->snapshot_id);
                 // abort here,
                 //  "not found a key" maybe a expected behavior
                 if (!ret){ // key not found or found but invalid

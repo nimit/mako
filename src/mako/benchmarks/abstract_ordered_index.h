@@ -35,7 +35,8 @@ public:
   virtual bool shard_get(
       lcdf::Str key,
       std::string &value,
-      size_t max_bytes_read = std::string::npos) = 0;
+      size_t max_bytes_read = std::string::npos,
+      uint64_t snapshot_id = 0) = 0;
 
   virtual bool get(
       void *txn,

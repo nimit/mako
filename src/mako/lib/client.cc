@@ -521,7 +521,8 @@ namespace mako
                            uint16_t table_id,
                            resp_continuation_t continuation,
                            error_continuation_t error_continuation,
-                           uint32_t timeout)
+                           uint32_t timeout,
+                           uint64_t snapshot_id)
     {
         uint32_t reqId = ++lastReqId;
         reqId *= 10;
@@ -536,10 +537,6 @@ namespace mako
                             continuation,
                             error_continuation);
 
-        // We intialize epoch number once a remoteGET is called as we have it for every transaction.
-#if defined(FAIL_NEW_VERSION)
-        current_term = sc_callback_();
-#endif
         auto *reqBuf = reinterpret_cast<get_request_t *>(
             transport->GetRequestBuf(
                 sizeof(get_request_t),
@@ -547,6 +544,7 @@ namespace mako
         reqBuf->targert_server_id = server_id;
         reqBuf->req_nr = reqId + current_term;
         reqBuf->len = key.size();
+        reqBuf->snapshot_id = snapshot_id;
         ASSERT_LT(key.size(), max_key_length);
 
         memcpy(reqBuf->key, key.c_str(), key.size());

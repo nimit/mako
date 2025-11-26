@@ -217,6 +217,7 @@ namespace mako
         uint32_t req_nr;
         uint16_t table_id;
         uint16_t len;
+        uint64_t snapshot_id;
         char key[max_key_length];
     };
 

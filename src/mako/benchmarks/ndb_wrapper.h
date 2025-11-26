@@ -143,6 +143,12 @@ public:
       void *txn,
       const std::string &key);  
 
+  virtual bool shard_get(
+      lcdf::Str key,
+      std::string &value,
+      size_t max_bytes_read,
+      uint64_t snapshot_id = 0);
+
   virtual bool get(
       void *txn,
       lcdf::Str key,

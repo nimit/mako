@@ -101,9 +101,35 @@ public:
     static bool mvGET(string& val,
                       char *oldval_str, // oldval_str == val, but it's the reference to the actual value
                       uint8_t current_term,
-                      std::unordered_map<int, uint32_t> hist_timestamp) {
+                      std::unordered_map<int, uint32_t> hist_timestamp,
+                      uint64_t snapshot_id = 0) {
         uint32_t *time_term = 0;
         time_term = reinterpret_cast<uint32_t*>((char*)(val.data()+val.length()-mako::EXTRA_BITS_FOR_VALUE));
+
+        // Snapshot isolation logic
+        if (snapshot_id > 0) {
+            uint32_t current_ts = *time_term / 10;
+            if (current_ts <= snapshot_id) {
+                return !isDeleted(val);
+            }
+
+            // Traverse version chain
+            mako::Node *header = reinterpret_cast<mako::Node *>((char*)(val.data()+val.length()-mako::BITS_OF_NODE));
+            while (header->data_size > 0) {
+                // For older versions in the chain, the timestamp is stored in the node header
+                // AND also at the end of the data payload (as time_term).
+                // Let's use the one at the end of payload to be consistent with how we read it.
+                time_term = reinterpret_cast<uint32_t*>((char*)(header->data+header->data_size-mako::EXTRA_BITS_FOR_VALUE));
+                uint32_t version_ts = *time_term / 10;
+
+                if (version_ts <= snapshot_id) {
+                    val.assign(header->data, (int)header->data_size);
+                    return !isDeleted(val);
+                }
+                header = reinterpret_cast<mako::Node *>((char*)(header->data+header->data_size-mako::BITS_OF_NODE));
+            }
+            return false; // No visible version found
+        }
 
         if (likely(*time_term % 10 == current_term)) { // current term: get the latest value but reclaim the all version below the watermark within the current term
             return !isDeleted(val);

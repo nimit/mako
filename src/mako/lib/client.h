@@ -34,7 +34,8 @@ namespace mako
                             uint16_t table_id,
                             resp_continuation_t continuation,
                             error_continuation_t error_continuation,
-                            uint32_t timeout);
+                            uint32_t timeout,
+                            uint64_t snapshot_id = 0);
         
         void InvokeScan(uint64_t txn_nr,
                             int dstShardIdx,

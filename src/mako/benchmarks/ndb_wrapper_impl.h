@@ -483,6 +483,17 @@ ndb_ordered_index<Transaction>::get(
     return true;
 }
 
+template <template <typename> class Transaction>
+bool
+ndb_ordered_index<Transaction>::shard_get(
+    lcdf::Str key,
+    std::string &value, size_t max_bytes_read, uint64_t snapshot_id)
+{
+    printf("Should not reach here - shard_get\n");
+    assert(false);
+    return false;
+}
+
 // XXX: find way to remove code duplication below using C++ templates!
 
 template <template <typename> class Transaction>

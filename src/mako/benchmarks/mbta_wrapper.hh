@@ -128,8 +128,11 @@ public:
   void set_table_name(const std::string& t) { mbta.set_table_name(t); }
 
   // handle get request from a remote shard
-  bool shard_get(lcdf::Str key, std::string &value, size_t max_bytes_read) {
+  bool shard_get(lcdf::Str key, std::string &value, size_t max_bytes_read, uint64_t snapshot_id = 0) {
     STD_OP({
+      if (snapshot_id > 0) {
+          TThread::txn->set_read_only_snapshot_id(snapshot_id);
+      }
       bool ret = mbta.transGet(key, value);
 
       if (value.length() >= mako::EXTRA_BITS_FOR_VALUE) value.resize(value.length() - mako::EXTRA_BITS_FOR_VALUE);;

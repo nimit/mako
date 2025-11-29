@@ -46,12 +46,13 @@ bench_runner * start_workers_tpcc(int leader_config, /*leader or learner (new le
                         int threads_nums,
                         bool skip_load = false /* for failover */,
                         int run = 0, /* for run() and rest, 0: threads start; 1: start run */
-                        bench_runner *rc = NULL)
+                        bench_runner *rc = NULL,
+                        std::string extra_opts = "")
 {
     std::string bench_type = "tpcc";
-    std::string bench_opts = "--f_mode=0";
+    std::string bench_opts = "--f_mode=0 " + extra_opts;
     if (skip_load) {
-        bench_opts = "--f_mode=1";
+        bench_opts = "--f_mode=1 " + extra_opts;
     }
 
     vector<string> bench_toks = split_ws(bench_opts);

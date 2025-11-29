@@ -11,7 +11,8 @@ static void parse_command_line_args(int argc,
                                     int &is_replicated,
                                     string& site_name,
                                     vector<string>& paxos_config_file,
-                                    string& local_shards_str)
+                                    string& local_shards_str,
+                                    string& extra_tpcc_opts)
 {
   while (1) {
     static struct option long_options[] =
@@ -25,10 +26,12 @@ static void parse_command_line_args(int argc,
       {"local-shards"               , required_argument , 0                          , 'L'} ,
       {"is-micro"                   , no_argument       , &is_micro                  ,   1} ,
       {"is-replicated"              , no_argument       , &is_replicated             ,   1} ,
+      {"workload-mix"               , required_argument , 0                          , 'w'} ,
+      {"disable-read-only-snapshots", no_argument       , 0                          , 'd'} ,
       {0, 0, 0, 0}
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "t:g:q:F:P:N:L:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "t:g:q:F:P:N:L:w:d", long_options, &option_index);
     if (c == -1)
       break;
 
@@ -77,6 +80,14 @@ static void parse_command_line_args(int argc,
 
     case 'F':
       paxos_config_file.push_back(optarg);
+      break;
+
+    case 'w':
+      extra_tpcc_opts += " --workload-mix=" + string(optarg);
+      break;
+
+    case 'd':
+      extra_tpcc_opts += " --disable-read-only-snapshots";
       break;
 
     case '?':
@@ -132,11 +143,11 @@ static void handle_new_config_format(const string& site_name)
          site_name.c_str(), site->shard_id, site->replica_idx, site->is_leader, benchConfig.getCluster().c_str());
 }
 
-static void run_workers(abstract_db* db)
+static void run_workers(abstract_db* db, const string& extra_opts)
 {
   auto& benchConfig = BenchmarkConfig::getInstance();
-  bench_runner *r = start_workers_tpcc(benchConfig.getLeaderConfig(), db, benchConfig.getNthreads());
-  start_workers_tpcc(benchConfig.getLeaderConfig(), db, benchConfig.getNthreads(), false, 1, r);
+  bench_runner *r = start_workers_tpcc(benchConfig.getLeaderConfig(), db, benchConfig.getNthreads(), false, 0, NULL, extra_opts);
+  start_workers_tpcc(benchConfig.getLeaderConfig(), db, benchConfig.getNthreads(), false, 1, r, extra_opts);
   delete db;
 }
 
@@ -149,10 +160,11 @@ main(int argc, char **argv)
   vector<string> paxos_config_file{};
   string site_name = "";  // For new config format
   string local_shards_str = "";  // For multi-shard mode: comma-separated list
+  string extra_tpcc_opts = "";
 
   auto& benchConfig = BenchmarkConfig::getInstance();
   // Parse command line arguments
-  parse_command_line_args(argc, argv, is_micro, is_replicated, site_name, paxos_config_file, local_shards_str);
+  parse_command_line_args(argc, argv, is_micro, is_replicated, site_name, paxos_config_file, local_shards_str, extra_tpcc_opts);
 
   // Handle new configuration format if site name is provided
   if (!site_name.empty() && benchConfig.getConfig() != nullptr) {
@@ -217,14 +229,14 @@ main(int argc, char **argv)
     if (first_shard && benchConfig.getLeaderConfig()) {
       Notice("Running workers on first shard (shard %d) - full multi-shard support pending",
              first_shard->shard_index);
-      run_workers(first_shard->db);
+      run_workers(first_shard->db, extra_tpcc_opts);
     }
   } else {
     // Single-shard mode: keep existing behavior
     abstract_db * db = initWithDB(); // Some init is required for followers/learners
     // Run worker threads on the leader
     if (benchConfig.getLeaderConfig()) {
-      run_workers(db);
+      run_workers(db, extra_tpcc_opts);
     }
   }
 

@@ -672,6 +672,7 @@ bench_runner::run()
     for (int i=0;i<sizeof(txn_w1)/sizeof(txn_w1[0]); i++) {
       if (agg_txn_counts.find(txn_w1[i]+"_Local")!=agg_txn_counts.end()) {
         cerr << "  " << txn_w1[i] << "_local_commit_latency: " << agg_txn_counts[txn_w1[i]+"_Local_NANO"] / (agg_txn_counts[txn_w1[i]+"_Local"] + 0.0) / 1000000.0 << " ms" << endl;
+        cerr << "  " << txn_w1[i] << "_local_throughput: " << agg_txn_counts[txn_w1[i]+"_Local"] / elapsed_sec << " ops/sec" << endl;
         cerr << "  " << txn_w1[i] << "_local_abort_latency: " << agg_txn_counts[txn_w1[i]+"_Local_NANO_abort"] / (agg_txn_counts[txn_w1[i]+"_Local_abort"] + 0.0) / 1000000.0 << " ms" << endl;
         cerr << "  " << txn_w1[i] << "_local_abort_ratio: " << agg_txn_counts[txn_w1[i]+"_Local_abort"] / (agg_txn_counts[txn_w1[i]+"_Local"] + agg_txn_counts[txn_w1[i]+"_Local_abort"] + 0.0) << endl;
       }

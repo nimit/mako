@@ -498,6 +498,15 @@ bool Transaction::try_commit(bool no_paxos) {
             tid_unique_ = maxTimestampReadSet;
         }
 
+#ifdef ENABLE_SINGLE_NODE_WATERMARK
+        if (!BenchmarkConfig::getInstance().getIsReplicated()) {
+            uint32_t current = sync_util::sync_logger::single_watermark_.load(std::memory_order_relaxed);
+            if (tid_unique_ > current) {
+                sync_util::sync_logger::single_watermark_.store(tid_unique_, std::memory_order_release);
+            }
+        }
+#endif
+
 #if defined(TRACKING_ROLLBACK)
         if (get_current_term()==0) {
             rollbacks_tracker[mako::getCurrentTimeMillis()].push_back(tid_unique_);

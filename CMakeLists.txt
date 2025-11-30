@@ -201,6 +201,7 @@ option(DISABLE_DISK "Disable disk persistence" ON)
 option(FAIL_NEW_VERSION "Enable fail new version" ON)
 option(SIMULATE_ONE_SHARD_PER_THREAD "Simulate one shard per thread" OFF)
 option(TRACKING_ROLLBACK "Enable rollback tracking" OFF)
+option(ENABLE_RO_FAST_PATH "Enable read-only transaction fast path" OFF)
 
 # Masstree configuration
 set(MASSTREE_CONFIG "CC=${CMAKE_C_COMPILER} CXX=${CMAKE_CXX_COMPILER} --enable-max-key-len=1024")
@@ -326,6 +327,9 @@ if(SIMULATE_ONE_SHARD_PER_THREAD)
 endif()
 if(TRACKING_ROLLBACK)
   list(APPEND CXXFLAGS -DTRACKING_ROLLBACK)
+endif()
+if(ENABLE_RO_FAST_PATH)
+  list(APPEND CXXFLAGS -DENABLE_RO_FAST_PATH)
 endif()
 list(APPEND CXXFLAGS
   -include ${W}/masstree/config.h

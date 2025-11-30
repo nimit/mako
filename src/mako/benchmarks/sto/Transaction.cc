@@ -384,10 +384,21 @@ bool Transaction::try_commit(bool no_paxos) {
         TXP_INCREMENT(txp_commit_time_nonopaque);
 #if !CONSISTENCY_CHECK
     // commit immediately if read-only transaction with opacity
-    if (!any_writes_ && !any_nonopaque_) {
+    static std::atomic<uint64_t> total_commits(0);
+    static std::atomic<uint64_t> fast_path_commits(0);
+    
+    uint64_t tc = total_commits.fetch_add(1, std::memory_order_relaxed);
+    if (tc % 10000 == 0) {
+        std::cerr << "DEBUG: Commits - Total: " << tc << ", FastPath: " << fast_path_commits.load(std::memory_order_relaxed) << std::endl;
+    }
+
+#ifdef ENABLE_RO_FAST_PATH
+    if (!any_writes_) {
+        fast_path_commits.fetch_add(1, std::memory_order_relaxed);
         stop(true, nullptr, 0);
         return true;
     }
+#endif
 #endif
 
     state_ = s_committing;
@@ -500,6 +511,9 @@ bool Transaction::try_commit(bool no_paxos) {
 
 #ifdef ENABLE_SINGLE_NODE_WATERMARK
         if (!BenchmarkConfig::getInstance().getIsReplicated()) {
+            read_only_snapshot_id_ = sync_util::sync_logger::retrieveShardW_relaxed();
+
+
             uint32_t current = sync_util::sync_logger::single_watermark_.load(std::memory_order_relaxed);
             if (tid_unique_ > current) {
                 sync_util::sync_logger::single_watermark_.store(tid_unique_, std::memory_order_release);

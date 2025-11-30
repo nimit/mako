@@ -114,8 +114,13 @@ public:
             }
 
             // Traverse version chain
+            static thread_local uint64_t total_traversals = 0;
+            static thread_local uint64_t total_chain_length = 0;
+            uint32_t chain_length = 1;
+
             mako::Node *header = reinterpret_cast<mako::Node *>((char*)(val.data()+val.length()-mako::BITS_OF_NODE));
             while (header->data_size > 0) {
+                chain_length++;
                 // For older versions in the chain, the timestamp is stored in the node header
                 // AND also at the end of the data payload (as time_term).
                 // Let's use the one at the end of payload to be consistent with how we read it.
@@ -123,6 +128,13 @@ public:
                 uint32_t version_ts = *time_term / 10;
 
                 if (version_ts <= snapshot_id) {
+                    total_traversals++;
+                    total_chain_length += chain_length;
+                    if (total_traversals % 10000 == 0) {
+                        std::cerr << "AVG_CHAIN_LENGTH: " 
+                                  << (double)total_chain_length / total_traversals 
+                                  << std::endl;
+                    }
                     val.assign(header->data, (int)header->data_size);
                     return !isDeleted(val);
                 }

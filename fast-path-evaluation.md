@@ -19,6 +19,77 @@ This benchmark represents the target deployment scenario: a distributed, replica
 
 ### Results
 
+Normal Path
+"""
+--- benchmark statistics ---
+runtime: 32.7157 sec
+memory delta: 3277.82 MB
+n_commits: 4741058
+latency_numer_us: 73786976423759460
+latency_numer_us_remote: 0
+memory delta rate: 100.191 MB/sec
+logical memory delta: 53.7781 MB
+logical memory delta rate: 1.6438 MB/sec
+agg_nosync_throughput: 144917 ops/sec
+avg_nosync_per_core_throughput: 36229.3 ops/sec/core
+agg_throughput: 144917 ops/sec
+avg_per_core_throughput: 36229.2 ops/sec/core
+agg_persist_throughput: 144917 ops/sec
+avg_per_core_persist_throughput: 36229.2 ops/sec/core
+avg_latency: 1.55634e+07 ms
+avg_persist_latency: 0 ms
+agg_abort_rate: 1.40605 aborts/sec
+avg_per_core_abort_rate: 0.351513 aborts/sec/core
+  NewOrder_local_commit_latency: 0.115607 ms
+  NewOrder_local_throughput: 14482.8 ops/sec
+  NewOrder_local_abort_latency: 0.991989 ms
+  NewOrder_local_abort_ratio: 9.70747e-05
+  OrderStatus_local_commit_latency: 0.0175618 ms
+  OrderStatus_local_throughput: 130434 ops/sec
+  OrderStatus_local_abort_latency: -nan ms
+  OrderStatus_local_abort_ratio: 0
+  NewOrder_remote_ratio: 0 %
+  NewOrder_remote_abort_ratio: -nan %
+  NewOrder_remote_commit_latency: -nan ms
+  NewOrder_remote_abort_latency: -nan ms
+"""
+
+Fast Path
+"""
+--- benchmark statistics ---
+runtime: 32.6052 sec
+memory delta: 3147.89 MB
+n_commits: 6000240
+latency_numer_us: 73786976421224296
+latency_numer_us_remote: 0
+memory delta rate: 96.5455 MB/sec
+logical memory delta: 68.0515 MB
+logical memory delta rate: 2.08713 MB/sec
+agg_nosync_throughput: 184027 ops/sec
+avg_nosync_per_core_throughput: 46006.9 ops/sec/core
+agg_throughput: 184027 ops/sec
+avg_per_core_throughput: 46006.8 ops/sec/core
+agg_persist_throughput: 184027 ops/sec
+avg_per_core_persist_throughput: 46006.8 ops/sec/core
+avg_latency: 1.22973e+07 ms
+avg_persist_latency: 0 ms
+agg_abort_rate: 1.71752 aborts/sec
+avg_per_core_abort_rate: 0.429379 aborts/sec/core
+  NewOrder_local_commit_latency: 0.098813 ms
+  NewOrder_local_throughput: 18388.7 ops/sec
+  NewOrder_local_abort_latency: 5.95486 ms
+  NewOrder_local_abort_ratio: 9.3392e-05
+  OrderStatus_local_commit_latency: 0.012949 ms
+  OrderStatus_local_throughput: 165638 ops/sec
+  OrderStatus_local_abort_latency: -nan ms
+  OrderStatus_local_abort_ratio: 0
+  NewOrder_remote_ratio: 0 %
+  NewOrder_remote_abort_ratio: -nan %
+  NewOrder_remote_commit_latency: -nan ms
+  NewOrder_remote_abort_latency: -nan ms
+"""
+
+
 | Metric | Fast Path | Normal Path | Improvement |
 | :--- | :--- | :--- | :--- |
 | **Throughput** | **149,802 ops/sec** | 141,931 ops/sec | **+5.55%** |

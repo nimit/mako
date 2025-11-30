@@ -15,14 +15,15 @@ echo "-------------------------------------------------------"
 
 run_benchmark() {
     local name=$1
-    local extra_args=$2
+    local enable_fast_path=$2
     
+    echo "Building for $name..."
     # Build with appropriate flags
     cd ../build
-    if [ "$name" == "fast_path" ]; then
-        cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_SINGLE_NODE_WATERMARK=OFF ..
+    if [ "$enable_fast_path" == "ON" ]; then
+        cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_RO_FAST_PATH=ON -DENABLE_SINGLE_NODE_WATERMARK=OFF ..
     else
-        cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_SINGLE_NODE_WATERMARK=OFF ..
+        cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_RO_FAST_PATH=OFF -DENABLE_SINGLE_NODE_WATERMARK=OFF ..
     fi
     make -j12 dbtest
     cd ../examples
@@ -38,10 +39,6 @@ run_benchmark() {
     sleep 2
 
     echo "Running $name..."
-    
-    # Launch replicas
-    # We need 4 processes: localhost (leader), learner, p2, p1
-    # Arguments based on bash/shard.sh logic but with extra args
     
     TRD=4
     SHARD=0
@@ -65,7 +62,7 @@ run_benchmark() {
     
     # Start Leader (localhost) with workload mix
     # Workload mix: 10,0,0,90,0 (10% NewOrder, 90% OrderStatus)
-    nohup $CMD_PREFIX -P localhost --workload-mix 10,0,0,90,0 $extra_args > ${name}.log 2>&1 &
+    nohup $CMD_PREFIX -P localhost --workload-mix 10,0,0,90,0 > ${name}.log 2>&1 &
     LEADER_PID=$!
     
     echo "Benchmark running with PID $LEADER_PID..."
@@ -84,20 +81,22 @@ run_benchmark() {
         echo "${name} Results (Read-Only Transactions):"
         echo "  Throughput: $tput ops/sec"
         echo "  Latency:    $lat ms"
+        
+        # Show commit stats if available
+        if grep -q "DEBUG: Commits" ${name}.log; then
+            echo "  Commit Stats:"
+            grep "DEBUG: Commits" ${name}.log | tail -n 2 | sed 's/^/    /'
+        fi
     else
         echo "Error: Log file ${name}.log not found."
     fi
 }
 
-# Run Fast Path
-# Note: Fast path is enabled by default in the code if TXN_FLAG_READ_ONLY is set.
-# We control it via the --disable-read-only-snapshots flag we added earlier.
-# Wait, we added --disable-read-only-snapshots to dbtest.cc?
-# Let's check dbtest.cc to confirm.
-# Yes, we added 'd' option for --disable-read-only-snapshots.
+# Run Fast Path (Build with ENABLE_RO_FAST_PATH=ON)
+run_benchmark "fast_path" "ON"
 
-run_benchmark "fast_path" ""
-run_benchmark "normal_path" "--disable-read-only-snapshots"
+# Run Normal Path (Build with ENABLE_RO_FAST_PATH=OFF)
+run_benchmark "normal_path" "OFF"
 
 echo "-------------------------------------------------------"
 echo "Done."

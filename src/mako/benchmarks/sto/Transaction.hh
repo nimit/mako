@@ -516,6 +516,17 @@ private:
         // We use relaxed ordering because strict freshness isn't required for the start of the transaction,
         // and it avoids a more expensive barrier.
         read_only_snapshot_id_ = sync_util::sync_logger::retrieveShardW_relaxed();
+
+        // DEBUG: Check lag
+        static std::atomic<uint64_t> sample_count{0};
+        if (sample_count.fetch_add(1) % 10000 == 0) {
+            uint64_t current_tid = _TID;
+            uint64_t watermark = read_only_snapshot_id_;
+            uint64_t lag = (current_tid - watermark) / 10;  // Remove epoch bits
+            std::cerr << "WATERMARK_LAG: current=" << current_tid/10 
+                      << ", watermark=" << watermark/10
+                      << ", lag=" << lag << std::endl;
+        }
     }
 
 #if TRANSACTION_HASHTABLE

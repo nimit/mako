@@ -19,7 +19,7 @@ run_bench() {
     # Build with appropriate flags
     cd "$PROJECT_ROOT/build"
     if [ "$enable_fast_path" == "ON" ]; then
-        cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_RO_FAST_PATH=ON ..
+        cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_RO_FAST_PATH=ON -DENABLE_SINGLE_NODE_WATERMARK=ON ..
     else
         cmake -DCMAKE_BUILD_TYPE=Release -DENABLE_RO_FAST_PATH=OFF ..
     fi
@@ -30,6 +30,7 @@ run_bench() {
     # Using 4 threads, 1 shard.
     # Workload mix: 10,0,0,90,0 (10% NewOrder, 90% OrderStatus)
     ../build/dbtest --num-threads 4 --shard-index 0 --shard-config ../config/mako_single_node.yml -P localhost --workload-mix 10,0,0,90,0 > ${name}.log 2>&1
+    # ../build/dbtest --num-threads 4 --shard-index 0 --shard-config ../config/mako_single_node.yml -P localhost --workload-mix 20,20,20,20,20 > ${name}.log 2>&1
     
     # Parse results for Read-Only transactions (OrderStatus)
     local tput=$(grep "OrderStatus_local_throughput:" ${name}.log | awk '{print $2}')
@@ -46,11 +47,23 @@ run_bench() {
     fi
 }
 
-# Run Fast Path (Build with ENABLE_RO_FAST_PATH=ON)
+# Run Fast Path (Build with ENABLE_RO_FAST_PATH=ON, ENABLE_SINGLE_NODE_WATERMARK=ON)
 run_bench "fast_path" "ON"
+# 90% RO:
+#   Throughput: 380990 ops/sec
+#   Latency:    0.00648938 ms
+#   Throughput: 411830 ops/sec
+#   Latency:    0.00573443 ms
+#   Throughput: 456679 ops/sec
+#   Latency:    0.00507133 ms
 
 # Run Normal Path (Build with ENABLE_RO_FAST_PATH=OFF)
 run_bench "normal_path" "OFF"
+# 90% RO:
+#   Throughput: 215737 ops/sec
+#   Latency:    0.0118493 ms
+#   Throughput: 187563 ops/sec
+#   Latency:    0.0134739 ms
 
 echo "-------------------------------------------------------"
 echo "Done."

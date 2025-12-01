@@ -394,6 +394,10 @@ bool Transaction::try_commit(bool no_paxos) {
 
 #ifdef ENABLE_RO_FAST_PATH
     if (!any_writes_) {
+        // have to validate if this is needed
+        // if (BenchmarkConfig::getInstance().getIsReplicated()) {
+        //      sync_util::sync_logger::local_timestamp_[TThread::getPartitionID()].store(UINT32_MAX, std::memory_order_release);
+        // }
         fast_path_commits.fetch_add(1, std::memory_order_relaxed);
         stop(true, nullptr, 0);
         return true;

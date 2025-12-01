@@ -47,7 +47,10 @@ run_benchmark() {
     PAXOS_CONFIG_PATH="../config/1leader_2followers"
     
     # Common command prefix
-    CMD_PREFIX="../build/dbtest --num-threads $TRD --shard-index $SHARD --shard-config $CONFIG_PATH/local-shards$NSHARD-warehouses$TRD.yml -F $PAXOS_CONFIG_PATH/paxos${TRD}_shardidx${SHARD}.yml -F ../config/occ_paxos.yml --is-replicated"
+    # 1 warehouse each
+    # CMD_PREFIX="../build/dbtest --num-threads $TRD --shard-index $SHARD --shard-config $CONFIG_PATH/local-shards$NSHARD-warehouses$TRD.yml -F $PAXOS_CONFIG_PATH/paxos${TRD}_shardidx${SHARD}.yml -F ../config/occ_paxos.yml --is-replicated"
+    # 1 warehouse total
+    CMD_PREFIX="../build/dbtest --num-threads $TRD --shard-index $SHARD --shard-config $CONFIG_PATH/local-shards$NSHARD-warehouses1.yml -F $PAXOS_CONFIG_PATH/paxos${TRD}_shardidx${SHARD}.yml -F ../config/occ_paxos.yml --is-replicated"
 
     # Start Learner
     nohup $CMD_PREFIX -P learner > ${name}_learner.log 2>&1 &
@@ -62,7 +65,7 @@ run_benchmark() {
     
     # Start Leader (localhost) with workload mix
     # Workload mix: 10,0,0,90,0 (10% NewOrder, 90% OrderStatus)
-    nohup $CMD_PREFIX -P localhost --workload-mix 10,0,0,90,0 > ${name}.log 2>&1 &
+    # nohup $CMD_PREFIX -P localhost --workload-mix 10,0,0,90,0 > ${name}.log 2>&1 &
     LEADER_PID=$!
     
     echo "Benchmark running with PID $LEADER_PID..."
@@ -93,10 +96,33 @@ run_benchmark() {
 }
 
 # Run Fast Path (Build with ENABLE_RO_FAST_PATH=ON)
-run_benchmark "fast_path" "ON"
+run_benchmark "fast_path_replicated" "ON"
+#   Throughput: 156138 ops/sec
+#   Latency:    0.0123915 ms
+#   Throughput: 181921 ops/sec
+#   Latency:    0.0117584 ms
+#   Throughput: 184525 ops/sec
+#   Latency:    0.010564 ms
+
+# AVG:
+#   Throughput: 174194 ops/sec
+#   Latency:    0.0115713 ms
 
 # Run Normal Path (Build with ENABLE_RO_FAST_PATH=OFF)
-run_benchmark "normal_path" "OFF"
+run_benchmark "normal_path_replicated" "OFF"
+#   Throughput: 148859 ops/sec
+#   Latency:    0.0146357 ms
+#   Throughput: 172074 ops/sec
+#   Latency:    0.0124861 ms
+#   Throughput: 173217 ops/sec
+#   Latency:    0.0123527 ms
 
+# AVG:
+#   Throughput: 164716 ops/sec
+#   Latency:    0.0131581 ms
+
+# DIFF
+#   Throughput: 5.75%
+#   Latency:    -12.05%
 echo "-------------------------------------------------------"
 echo "Done."

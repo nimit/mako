@@ -52,20 +52,21 @@ run_benchmark() {
     # 1 warehouse total
     CMD_PREFIX="../build/dbtest --num-threads $TRD --shard-index $SHARD --shard-config $CONFIG_PATH/local-shards$NSHARD-warehouses1.yml -F $PAXOS_CONFIG_PATH/paxos${TRD}_shardidx${SHARD}.yml -F ../config/occ_paxos.yml --is-replicated"
 
+
     # Start Learner
     nohup $CMD_PREFIX -P learner > ${name}_learner.log 2>&1 &
     
     # Start Follower 2
-    nohup $CMD_PREFIX -P p2 > ${name}_p2.log 2>&1 &
+    nohup $CMD_PREFIX -P p2 --allow-follower-workload --workload-mix 0,0,0,100,0 > ${name}_p2.log 2>&1 &
     
     # Start Follower 1
-    nohup $CMD_PREFIX -P p1 > ${name}_p1.log 2>&1 &
+    nohup $CMD_PREFIX -P p1 --allow-follower-workload --workload-mix 0,0,0,100,0 > ${name}_p1.log 2>&1 &
     
     sleep 2
     
     # Start Leader (localhost) with workload mix
     # Workload mix: 10,0,0,90,0 (10% NewOrder, 90% OrderStatus)
-    # nohup $CMD_PREFIX -P localhost --workload-mix 10,0,0,90,0 > ${name}.log 2>&1 &
+    nohup $CMD_PREFIX -P localhost --workload-mix 10,0,0,90,0 > ${name}.log 2>&1 &
     LEADER_PID=$!
     
     echo "Benchmark running with PID $LEADER_PID..."
@@ -76,14 +77,35 @@ run_benchmark() {
     # Kill processes
     pkill -9 -f dbtest || true
     
-    # Parse results for Read-Only transactions (OrderStatus) from Leader log
+    # Parse results
     if [ -f "${name}.log" ]; then
+        # Leader stats
         local tput=$(grep "OrderStatus_local_throughput:" ${name}.log | awk '{print $2}')
         local lat=$(grep "OrderStatus_local_commit_latency:" ${name}.log | awk '{print $2}')
         
+        # Follower 1 stats
+        local tput_p1=0
+        if [ -f "${name}_p1.log" ]; then
+             tput_p1=$(grep "OrderStatus_local_throughput:" ${name}_p1.log | awk '{print $2}')
+        fi
+        
+        # Follower 2 stats
+        local tput_p2=0
+        if [ -f "${name}_p2.log" ]; then
+             tput_p2=$(grep "OrderStatus_local_throughput:" ${name}_p2.log | awk '{print $2}')
+        fi
+        
+        # Calculate total throughput
+        # Use python for float addition if needed, or simple integer math if bash handles it (bash only integers)
+        # Using awk for safety
+        local total_tput=$(awk "BEGIN {print $tput + $tput_p1 + $tput_p2}")
+        
         echo "${name} Results (Read-Only Transactions):"
-        echo "  Throughput: $tput ops/sec"
-        echo "  Latency:    $lat ms"
+        echo "  Leader Throughput:     $tput ops/sec"
+        echo "  Follower 1 Throughput: $tput_p1 ops/sec"
+        echo "  Follower 2 Throughput: $tput_p2 ops/sec"
+        echo "  Total Throughput:      $total_tput ops/sec"
+        echo "  Leader Latency:        $lat ms"
         
         # Show commit stats if available
         if grep -q "DEBUG: Commits" ${name}.log; then
@@ -97,32 +119,9 @@ run_benchmark() {
 
 # Run Fast Path (Build with ENABLE_RO_FAST_PATH=ON)
 run_benchmark "fast_path_replicated" "ON"
-#   Throughput: 156138 ops/sec
-#   Latency:    0.0123915 ms
-#   Throughput: 181921 ops/sec
-#   Latency:    0.0117584 ms
-#   Throughput: 184525 ops/sec
-#   Latency:    0.010564 ms
-
-# AVG:
-#   Throughput: 174194 ops/sec
-#   Latency:    0.0115713 ms
 
 # Run Normal Path (Build with ENABLE_RO_FAST_PATH=OFF)
 run_benchmark "normal_path_replicated" "OFF"
-#   Throughput: 148859 ops/sec
-#   Latency:    0.0146357 ms
-#   Throughput: 172074 ops/sec
-#   Latency:    0.0124861 ms
-#   Throughput: 173217 ops/sec
-#   Latency:    0.0123527 ms
 
-# AVG:
-#   Throughput: 164716 ops/sec
-#   Latency:    0.0131581 ms
-
-# DIFF
-#   Throughput: 5.75%
-#   Latency:    -12.05%
 echo "-------------------------------------------------------"
 echo "Done."

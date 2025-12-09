@@ -154,6 +154,7 @@ static void run_workers(abstract_db* db, const string& extra_opts)
 int
 main(int argc, char **argv)
 {
+
   // Parameters prepared
   int is_micro = 0;  // Flag for micro benchmark mode
   int is_replicated = 0;  // if use Paxos to replicate
@@ -161,10 +162,95 @@ main(int argc, char **argv)
   string site_name = "";  // For new config format
   string local_shards_str = "";  // For multi-shard mode: comma-separated list
   string extra_tpcc_opts = "";
+  int allow_follower_workload = 0;
 
   auto& benchConfig = BenchmarkConfig::getInstance();
   // Parse command line arguments
-  parse_command_line_args(argc, argv, is_micro, is_replicated, site_name, paxos_config_file, local_shards_str, extra_tpcc_opts);
+  struct option long_options[] =
+    {
+      {"num-threads"                , required_argument , 0                          , 't'} ,
+      {"shard-index"                , required_argument , 0                          , 'g'} ,
+      {"shard-config"               , required_argument , 0                          , 'q'} ,
+      {"paxos-config"               , required_argument , 0                          , 'F'} ,
+      {"paxos-proc-name"            , required_argument , 0                          , 'P'} ,
+      {"site-name"                  , required_argument , 0                          , 'N'} ,
+      {"local-shards"               , required_argument , 0                          , 'L'} ,
+      {"is-micro"                   , no_argument       , &is_micro                  ,   1} ,
+      {"is-replicated"              , no_argument       , &is_replicated             ,   1} ,
+      {"workload-mix"               , required_argument , 0                          , 'w'} ,
+      {"disable-read-only-snapshots", no_argument       , 0                          , 'd'} ,
+      {"allow-follower-workload"    , no_argument       , &allow_follower_workload   ,   1} ,
+      {0, 0, 0, 0}
+    };
+  
+  while (1) {
+    int option_index = 0;
+    int c = getopt_long(argc, argv, "t:g:q:F:P:N:L:w:d", long_options, &option_index);
+    if (c == -1)
+      break;
+
+    switch (c) {
+    case 0:
+      if (long_options[option_index].flag != 0)
+        break;
+      abort();
+      break;
+
+    case 't': {
+      auto& config = BenchmarkConfig::getInstance();
+      config.setNthreads(strtoul(optarg, NULL, 10));
+      ALWAYS_ASSERT(config.getNthreads() > 0);
+      }
+      break;
+
+    case 'g': {
+      auto& config = BenchmarkConfig::getInstance();
+      config.setShardIndex(strtoul(optarg, NULL, 10));
+      ALWAYS_ASSERT(config.getShardIndex() >= 0);
+      }
+      break;
+
+    case 'N':
+      site_name = string(optarg);
+      break;
+
+    case 'P': {
+      auto& config = BenchmarkConfig::getInstance();
+      config.setPaxosProcName(string(optarg));
+      }
+      break;
+
+    case 'L':
+      local_shards_str = string(optarg);
+      break;
+
+    case 'q': {
+      auto& benchConfig = BenchmarkConfig::getInstance();
+      transport::Configuration* transportConfig = new transport::Configuration(optarg);
+      benchConfig.setConfig(transportConfig);
+      benchConfig.setNshards(transportConfig->nshards);
+      }
+      break;
+
+    case 'F':
+      paxos_config_file.push_back(optarg);
+      break;
+
+    case 'w':
+      extra_tpcc_opts += " --workload-mix=" + string(optarg);
+      break;
+
+    case 'd':
+      extra_tpcc_opts += " --disable-read-only-snapshots";
+      break;
+
+    case '?':
+      exit(1);
+
+    default:
+      abort();
+    }
+  }
 
   // Handle new configuration format if site name is provided
   if (!site_name.empty() && benchConfig.getConfig() != nullptr) {
@@ -226,7 +312,7 @@ main(int argc, char **argv)
     ShardContext* first_shard = benchConfig.getShardContext(
         benchConfig.getConfig()->local_shard_indices[0]);
 
-    if (first_shard && benchConfig.getLeaderConfig()) {
+    if (first_shard && (benchConfig.getLeaderConfig() || allow_follower_workload)) {
       Notice("Running workers on first shard (shard %d) - full multi-shard support pending",
              first_shard->shard_index);
       run_workers(first_shard->db, extra_tpcc_opts);
@@ -234,8 +320,8 @@ main(int argc, char **argv)
   } else {
     // Single-shard mode: keep existing behavior
     abstract_db * db = initWithDB(); // Some init is required for followers/learners
-    // Run worker threads on the leader
-    if (benchConfig.getLeaderConfig()) {
+    // Run worker threads on the leader OR if explicitly enabled for followers
+    if (benchConfig.getLeaderConfig() || allow_follower_workload) {
       run_workers(db, extra_tpcc_opts);
     }
   }

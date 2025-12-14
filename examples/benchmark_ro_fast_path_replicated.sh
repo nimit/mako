@@ -53,14 +53,20 @@ run_benchmark() {
     CMD_PREFIX="../build/dbtest --num-threads $TRD --shard-index $SHARD --shard-config $CONFIG_PATH/local-shards$NSHARD-warehouses1.yml -F $PAXOS_CONFIG_PATH/paxos${TRD}_shardidx${SHARD}.yml -F ../config/occ_paxos.yml --is-replicated"
 
 
+    # Prepare Follower Flags
+    local follower_flags=""
+    if [ "$enable_fast_path" == "ON" ]; then
+        follower_flags="--allow-follower-workload"
+    fi
+
     # Start Learner
     nohup $CMD_PREFIX -P learner > ${name}_learner.log 2>&1 &
     
-    # Start Follower 2
-    nohup $CMD_PREFIX -P p2 --allow-follower-workload --workload-mix 0,0,0,100,0 > ${name}_p2.log 2>&1 &
-    
     # Start Follower 1
-    nohup $CMD_PREFIX -P p1 --allow-follower-workload --workload-mix 0,0,0,100,0 > ${name}_p1.log 2>&1 &
+    nohup $CMD_PREFIX -P p1 $follower_flags > ${name}_p1.log 2>&1 &
+    
+    # Start Follower 2
+    nohup $CMD_PREFIX -P p2 $follower_flags > ${name}_p2.log 2>&1 &
     
     sleep 2
     
@@ -81,18 +87,21 @@ run_benchmark() {
     if [ -f "${name}.log" ]; then
         # Leader stats
         local tput=$(grep "OrderStatus_local_throughput:" ${name}.log | awk '{print $2}')
+        if [ -z "$tput" ]; then tput=0; fi
         local lat=$(grep "OrderStatus_local_commit_latency:" ${name}.log | awk '{print $2}')
         
         # Follower 1 stats
         local tput_p1=0
         if [ -f "${name}_p1.log" ]; then
-             tput_p1=$(grep "OrderStatus_local_throughput:" ${name}_p1.log | awk '{print $2}')
+             local val=$(grep "OrderStatus_local_throughput:" ${name}_p1.log | awk '{print $2}')
+             if [ ! -z "$val" ]; then tput_p1=$val; fi
         fi
         
         # Follower 2 stats
         local tput_p2=0
         if [ -f "${name}_p2.log" ]; then
-             tput_p2=$(grep "OrderStatus_local_throughput:" ${name}_p2.log | awk '{print $2}')
+             local val=$(grep "OrderStatus_local_throughput:" ${name}_p2.log | awk '{print $2}')
+             if [ ! -z "$val" ]; then tput_p2=$val; fi
         fi
         
         # Calculate total throughput

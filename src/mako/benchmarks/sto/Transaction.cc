@@ -384,21 +384,8 @@ bool Transaction::try_commit(bool no_paxos) {
         TXP_INCREMENT(txp_commit_time_nonopaque);
 #if !CONSISTENCY_CHECK
     // commit immediately if read-only transaction with opacity
-    static std::atomic<uint64_t> total_commits(0);
-    static std::atomic<uint64_t> fast_path_commits(0);
-    
-    uint64_t tc = total_commits.fetch_add(1, std::memory_order_relaxed);
-    if (tc % 10000 == 0) {
-        std::cerr << "DEBUG: Commits - Total: " << tc << ", FastPath: " << fast_path_commits.load(std::memory_order_relaxed) << std::endl;
-    }
-
 #ifdef ENABLE_RO_FAST_PATH
     if (!any_writes_) {
-        // have to validate if this is needed
-        // if (BenchmarkConfig::getInstance().getIsReplicated()) {
-        //      sync_util::sync_logger::local_timestamp_[TThread::getPartitionID()].store(UINT32_MAX, std::memory_order_release);
-        // }
-        fast_path_commits.fetch_add(1, std::memory_order_relaxed);
         stop(true, nullptr, 0);
         return true;
     }

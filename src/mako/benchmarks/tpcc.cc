@@ -784,20 +784,58 @@ public:
 #if defined(SIMPLE_WORKLOAD)
     w.push_back(workload_desc("NewOrder", 1.0, TxnNewOrder));
 #else
-    unsigned m = 0;
-    for (size_t i = 0; i < ARRAY_NELEMS(g_txn_workload_mix); i++)
-      m += g_txn_workload_mix[i];
-    ALWAYS_ERROR(m == 100);
-    if (g_txn_workload_mix[0])
-      w.push_back(workload_desc("NewOrder", double(g_txn_workload_mix[0])/100.0, TxnNewOrder));
-    if (g_txn_workload_mix[1])
-      w.push_back(workload_desc("Payment", double(g_txn_workload_mix[1])/100.0, TxnPayment));
-    if (g_txn_workload_mix[2])
-      w.push_back(workload_desc("Delivery", double(g_txn_workload_mix[2])/100.0, TxnDelivery));
-    if (g_txn_workload_mix[3])
-      w.push_back(workload_desc("OrderStatus", double(g_txn_workload_mix[3])/100.0, TxnOrderStatus));
-    if (g_txn_workload_mix[4])
-      w.push_back(workload_desc("StockLevel", double(g_txn_workload_mix[4])/100.0, TxnStockLevel));
+
+    unsigned mix[5] = {0, 0, 0, 0, 0};
+    
+    bool fast_path_enabled = false;
+#ifdef ENABLE_RO_FAST_PATH
+    fast_path_enabled = true;
+#endif
+
+    bool is_leader = BenchmarkConfig::getInstance().getLeaderConfig();
+
+    if (fast_path_enabled) {
+        if (is_leader) {
+            // Leader: Use configured workload mix (e.g. 90% RO, 10% RW)
+             unsigned m = 0;
+             for (size_t i = 0; i < ARRAY_NELEMS(g_txn_workload_mix); i++) {
+                 mix[i] = g_txn_workload_mix[i];
+                 m += mix[i];
+             }
+             ALWAYS_ERROR(m == 100);
+        } else {
+            // Follower: 100% Read-Only
+            mix[0] = 0;
+            mix[1] = 0;
+            mix[2] = 0;
+            mix[3] = 100; // OrderStatus
+            mix[4] = 0; // StockLevel
+        }
+    } else {
+        if (is_leader) {
+             // Leader: Normal workload
+             unsigned m = 0;
+             for (size_t i = 0; i < ARRAY_NELEMS(g_txn_workload_mix); i++) {
+                 mix[i] = g_txn_workload_mix[i];
+                 m += mix[i];
+             }
+             ALWAYS_ERROR(m == 100);
+        } else {
+             // Follower: DO NOT READ
+             // mix remains all 0s
+        }
+    }
+
+    if (mix[0])
+      w.push_back(workload_desc("NewOrder", double(mix[0])/100.0, TxnNewOrder));
+    if (mix[1])
+      w.push_back(workload_desc("Payment", double(mix[1])/100.0, TxnPayment));
+    if (mix[2])
+      w.push_back(workload_desc("Delivery", double(mix[2])/100.0, TxnDelivery));
+    if (mix[3])
+      w.push_back(workload_desc("OrderStatus", double(mix[3])/100.0, TxnOrderStatus));
+    if (mix[4])
+      w.push_back(workload_desc("StockLevel", double(mix[4])/100.0, TxnStockLevel));
 #endif
     return w;
   }
